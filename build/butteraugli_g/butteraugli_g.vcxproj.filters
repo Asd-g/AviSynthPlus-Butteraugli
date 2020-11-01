@@ -18,8 +18,5 @@
     <ClCompile Include="..\..\butteraugli\butteraugli\butteraugli.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\butteraugli\butteraugli\butteraugli_main.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>
