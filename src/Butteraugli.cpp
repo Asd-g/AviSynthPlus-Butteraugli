@@ -99,12 +99,12 @@ public:
         : GenericVideoFilter(_child), clip(_clip), heatmap_(heatmap)
     {
         if ((!vi.IsPlanarRGB() && !vi.IsPlanarRGBA()) || vi.BitsPerComponent() > 8)
-            env->ThrowError("butteraugli: only planar RGB 8-bit clip supported");
+            env->ThrowError("Butteraugli: only planar RGB 8-bit clip supported");
 
         const VideoInfo vi1 = clip->GetVideoInfo();
 
         if (vi.height != vi1.height || vi.width != vi1.width)
-            env->ThrowError("butteraugli: both clips must have same dimensions.");
+            env->ThrowError("Butteraugli: both clips must have same dimensions.");
 
         table = new double[256];
     }
