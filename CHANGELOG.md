@@ -1,3 +1,6 @@
+##### 1.0.2:
+    Registerd as MT_MULTI_INSTANCE.
+
 ##### 1.0.1:
     Freed the dynamically allocated memory.
     

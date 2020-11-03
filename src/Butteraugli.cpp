@@ -169,6 +169,11 @@ public:
 
         return dst;
     }
+
+    int __stdcall SetCacheHints(int cachehints, int frame_range)
+    {
+        return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
+    }
 };
 
 AVSValue __cdecl Create_butteraugli_(AVSValue args, void* user_data, IScriptEnvironment* env)
