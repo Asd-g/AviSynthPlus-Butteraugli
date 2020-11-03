@@ -1,4 +1,4 @@
 [submodule "butteraugli"]
 	path = butteraugli
-	url = https://github.com/google/butteraugli
+	url = https://github.com/gralic/butteraugli
 	branch = master
