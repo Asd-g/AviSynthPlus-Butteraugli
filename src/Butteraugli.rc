@@ -2,8 +2,8 @@
 #include <ntdef.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION             1,0,2,0
-PRODUCTVERSION        	1,0,2,0
+FILEVERSION             1,1,0,0
+PRODUCTVERSION        	1,1,0,0
 FILEFLAGSMASK           VS_FFI_FILEFLAGSMASK
 FILEFLAGS               0x0L
 FILEOS                  VOS__WINDOWS32
@@ -16,11 +16,11 @@ BEGIN
         BEGIN
         VALUE "Comments",         "Butteraugli estimating filter for the psychovisual similarity of two images."
         VALUE "FileDescription",  "Butteraugli for AviSynth+"
-        VALUE "FileVersion",      "1.0.2"
+        VALUE "FileVersion",      "1.1.0"
         VALUE "InternalName",     "Butteraugli"
         VALUE "OriginalFilename", "Butteraugli.dll"
         VALUE "ProductName",      "Butteraugli"
-        VALUE "ProductVersion",   "1.0.2"
+        VALUE "ProductVersion",   "1.1.0"
         END
     END
     BLOCK "VarFileInfo"

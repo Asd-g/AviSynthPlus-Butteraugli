@@ -1,3 +1,7 @@
+##### 1.1.0:
+    Added support for 10..32-bit clips.
+    Added parameters 'hf_asymmetry' and 'linput'.
+
 ##### 1.0.2:
     Registerd as MT_MULTI_INSTANCE.
 
