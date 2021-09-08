@@ -1,4 +1,4 @@
-# Description
+## Description
 
 A quality metric for lossy image and video compression.
 
@@ -6,15 +6,19 @@ This is [a port of the VapourSynth plugin butteraugli](https://github.com/fdar05
 
 [Google's Butteraugli](https://github.com/google/butteraugli) is used.
 
-AviSynth+ >=3.6 required in order to use this filter.
+### Requirements:
 
-# Usage
+- AviSynth+ 3.6 or later
+
+- Microsoft VisualC++ Redistributable Package 2022 (can be downloaded from [here](https://github.com/abbodi1406/vcredist/releases))
+
+### Usage:
 
 ```
 Butteraugli (clip clip1, clip clip2, float "hf_asymmetry", bool "heatmap", bool "linput")
 ```
 
-## Parameters:
+### Parameters:
 
 - clip1, clip2\
     Clips that are used for estimating the psychovisual similarity. They must be in RGB planar format and must have same dimensions.
@@ -37,7 +41,7 @@ Butteraugli (clip clip1, clip clip2, float "hf_asymmetry", bool "heatmap", bool 
     
 The psychovisual similarity of the clips will be stored as frame property '_FrameButteraugli' in the output clip. Larger values indicate to bigger difference. 
 
-# License
+### License:
 
 The used butteraugli library is licensed under Apache-2.0 license.
 
