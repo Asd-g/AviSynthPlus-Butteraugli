@@ -1,129 +1,48 @@
 #include "avisynth.h"
-#include "butteraugli/butteraugli.h"
+#include "lib/jxl/enc_butteraugli_comparator.h"
 
 template <typename T>
-static void ScoreToRgb(T& r, T& g, T& b, double score, double good_threshold, double bad_threshold, int peak)
+void heatmap(PVideoFrame& dst, const jxl::ImageF& distmap)
 {
-    double heatmap[12][3] =
-    {
-        { 0, 0, 0 },
-        { 0, 0, 1 },
-        { 0, 1, 1 },
-        { 0, 1, 0 }, // Good level
-        { 1, 1, 0 },
-        { 1, 0, 0 }, // Bad level
-        { 1, 0, 1 },
-        { 0.5, 0.5, 1.0 },
-        { 1.0, 0.5, 0.5 },  // Pastel colors for the very bad quality range.
-        { 1.0, 1.0, 0.5 },
-        { 1, 1, 1, },
-        { 1, 1, 1, },
-    };
+    jxl::Image3F buff = jxl::CreateHeatMapImage(distmap, jxl::ButteraugliFuzzyInverse(1.5), jxl::ButteraugliFuzzyInverse(0.5));
 
-    if (score < good_threshold)
-        score = (score / good_threshold) * 0.3;
-    else if (score < bad_threshold)
-        score = 0.3 + (score - good_threshold) / (bad_threshold - good_threshold) * 0.15;
-    else
-        score = 0.45 + (score - bad_threshold) / (bad_threshold * 12) * 0.5;
-
-    static const int kTableSize = sizeof(heatmap) / sizeof(heatmap[0]);
-
-    score = std::min<double>(std::max<double>(score * (static_cast<int64_t>(kTableSize) - 1), 0.0), static_cast<int64_t>(kTableSize) - 2);
-
-    int ix = static_cast<int>(score);
-
-    double mix = score - ix;
-
-    //r
-    double vr = mix * heatmap[ix + 1][0] + (1 - mix) * heatmap[ix][0];
-    //g
-    double vg = mix * heatmap[ix + 1][1] + (1 - mix) * heatmap[ix][1];
-    //b
-    double vb = mix * heatmap[ix + 1][2] + (1 - mix) * heatmap[ix][2];    
-
-    if constexpr (std::is_integral_v<T>)
-    {
-        r = static_cast<T>(peak * pow(vr, 0.5) + 0.5);
-        g = static_cast<T>(peak * pow(vg, 0.5) + 0.5);
-        b = static_cast<T>(peak * pow(vb, 0.5) + 0.5);
-    }
-    else
-    {
-        r = static_cast<float>(pow(vr, 0.5));
-        g = static_cast<float>(pow(vg, 0.5));
-        b = static_cast<float>(pow(vb, 0.5));
-    }
-
-}
-
-template <typename T>
-static void WriteResult(const butteraugli::ImageF& distmap, PVideoFrame& dst, double good_threshold, double bad_threshold, int peak)
-{
-    const int pixel_size = sizeof(T);
-    const int stride = dst->GetPitch() / pixel_size;
+    const int stride = dst->GetPitch() / sizeof(T);
     const int height = dst->GetHeight();
-    const int width = dst->GetRowSize() / pixel_size;
-    T* dst_r = reinterpret_cast<T*>(dst->GetWritePtr(PLANAR_R));
-    T* dst_g = reinterpret_cast<T*>(dst->GetWritePtr(PLANAR_G));
-    T* dst_b = reinterpret_cast<T*>(dst->GetWritePtr(PLANAR_B));
-
-    for (int y = 0; y < height; ++y)
-    {
-        for (int x = 0; x < width; ++x)
-            ScoreToRgb<T>(dst_r[x], dst_g[x], dst_b[x], distmap.Row(y)[x], good_threshold, bad_threshold, peak);
-
-        dst_r += stride;
-        dst_g += stride;
-        dst_b += stride;
-    }
-}
-
-template <typename T>
-static void load(std::vector<butteraugli::ImageF>& linear, PVideoFrame& src, int peak)
-{
-    const int pixel_size = sizeof(T);
-    const int float_size = sizeof(float);
-    const int stride = src->GetPitch() / pixel_size;
-    const int height = src->GetHeight();
-    const int width = src->GetRowSize() / pixel_size;
-    linear = std::vector<butteraugli::ImageF>(butteraugli::CreatePlanes<float>(width, height, 3));
-    int planes[3] = { PLANAR_R, PLANAR_G, PLANAR_B };
-    float* p = static_cast<float*>(_aligned_malloc(static_cast<int64_t>(stride) * height * float_size, 32));
+    const int width = dst->GetRowSize() / sizeof(T);
+    
+    const int planes[3] = { PLANAR_R, PLANAR_G, PLANAR_B };
 
     if constexpr (std::is_same_v<T, uint8_t>)
     {
+        jxl::Image3B tmp(width, height);
+        jxl::Image3Convert(buff, 255, &tmp);
+
         for (int i = 0; i < 3; ++i)
         {
-            const int plane = planes[i];
-            const uint8_t* srcp = src->GetReadPtr(plane);
+            uint8_t* dstp = dst->GetWritePtr(planes[i]);
 
             for (int y = 0; y < height; ++y)
             {
-                for (int x = 0; x < width; ++x)
-                    p[x] = srcp[x];
+                memcpy(dstp, tmp.ConstPlaneRow(i, y), width * sizeof(T));
 
-                memcpy(linear[i].Row(y), p, static_cast<int64_t>(width) * float_size);
-
-                srcp += stride;
+                dstp += stride;
             }
         }
     }
     else if constexpr (std::is_same_v<T, uint16_t>)
     {
+        jxl::Image3U tmp(width, height);
+        jxl::Image3Convert(buff, 65535, &tmp);
+
         for (int i = 0; i < 3; ++i)
         {
-            const int plane = planes[i];
-            const uint16_t* srcp = reinterpret_cast<const uint16_t*>(src->GetReadPtr(plane));
+            uint16_t* dstp = reinterpret_cast<uint16_t*>(dst->GetWritePtr(planes[i]));
 
             for (int y = 0; y < height; ++y)
             {
-                for (int x = 0; x < width; ++x)
-                    p[x] = srcp[x] / static_cast<float>(peak) * 255.0f;
+                memcpy(dstp, tmp.ConstPlaneRow(i, y), width * sizeof(T));
 
-                memcpy(linear[i].Row(y), p, static_cast<int64_t>(width) * float_size);
-
-                srcp += stride;
+                dstp += stride;
             }
         }
     }
@@ -131,141 +50,220 @@ static void load(std::vector<butteraugli::ImageF>& linear, PVideoFrame& src, int
     {
         for (int i = 0; i < 3; ++i)
         {
-            const int plane = planes[i];
-            const float* srcp = reinterpret_cast<const float*>(src->GetReadPtr(plane));
+            float* dstp = reinterpret_cast<float*>(dst->GetWritePtr(planes[i]));
 
             for (int y = 0; y < height; ++y)
             {
-                for (int x = 0; x < width; ++x)
-                    p[x] = srcp[x] * 255.0f;
+                memcpy(dstp, buff.ConstPlaneRow(i, y), width * sizeof(T));
 
-                memcpy(linear[i].Row(y), p, static_cast<int64_t>(width) * pixel_size);
-
-                srcp += stride;
+                dstp += stride;
             }
         }
     }
-
-    _aligned_free(p);
 }
 
-static void convert_to_linear(std::vector<butteraugli::ImageF>& linear)
+template <typename T, bool linput>
+void fill_image(jxl::CodecInOut& ref, jxl::CodecInOut& dist, PVideoFrame& src1, PVideoFrame& src2)
 {
-    const int height = linear[0].ysize();
-    const int width = linear[0].xsize();
-    double kSrgbToLinearTable[256]{ 0.0 };
+    const int stride1 = src1->GetPitch() / sizeof(T);
+    const int stride2 = src2->GetPitch() / sizeof(T);
+    const int height = src1->GetHeight();
+    const int width = src1->GetRowSize() / sizeof(T);
 
-    for (int i = 0; i < 256; ++i)
-    {
-        const double srgb = i / 255.0;
-        kSrgbToLinearTable[i] = 255.0 * (srgb <= (12.92 * 0.003041282560128) ? srgb / 12.92 : std::pow((srgb + 0.055010718947587) / 1.055010718947587, 2.4));
-    }
+    const int planes[3] = { PLANAR_R, PLANAR_G, PLANAR_B };
 
-    for (int i = 0; i < 3; ++i)
+    if constexpr (std::is_same_v<T, uint8_t>)
     {
-        for (int y = 0; y < height; ++y)
+        jxl::Image3B tmp1(width, height);
+        jxl::Image3B tmp2(width, height);
+
+        for (int i = 0; i < 3; ++i)
         {
-            const float* const BUTTERAUGLI_RESTRICT rgb_from = linear[i].Row(y);
-            float* const BUTTERAUGLI_RESTRICT rgbf_to = linear[i].Row(y);
+            const uint8_t* srcp1 = src1->GetReadPtr(planes[i]);
+            const uint8_t* srcp2 = src2->GetReadPtr(planes[i]);
 
-            for (int x = 0; x < width; ++x)
-                rgbf_to[x] = kSrgbToLinearTable[llrintf(rgb_from[x])];
+            for (int y = 0; y < height; ++y)
+            {
+                memcpy(tmp1.PlaneRow(i, y), srcp1, width * sizeof(T));
+                memcpy(tmp2.PlaneRow(i, y), srcp2, width * sizeof(T));
+                
+                srcp1 += stride1;
+                srcp2 += stride2;
+            }
         }
+
+        ref.SetFromImage(std::move(jxl::ConvertToFloat(tmp1)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+        dist.SetFromImage(std::move(jxl::ConvertToFloat(tmp2)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+    }
+    else if constexpr (std::is_same_v<T, uint16_t>)
+    {
+        jxl::Image3U tmp1(width, height);
+        jxl::Image3U tmp2(width, height);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            const uint16_t* srcp1 = reinterpret_cast<const uint16_t*>(src1->GetReadPtr(planes[i]));
+            const uint16_t* srcp2 = reinterpret_cast<const uint16_t*>(src2->GetReadPtr(planes[i]));
+
+            for (int y = 0; y < height; ++y)
+            {
+                memcpy(tmp1.PlaneRow(i, y), srcp1, width * sizeof(T));
+                memcpy(tmp2.PlaneRow(i, y), srcp2, width * sizeof(T));
+
+                srcp1 += stride1;
+                srcp2 += stride2;
+            }
+        }
+
+        ref.SetFromImage(std::move(jxl::ConvertToFloat(tmp1)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+        dist.SetFromImage(std::move(jxl::ConvertToFloat(tmp2)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+    }
+    else
+    {
+        jxl::Image3F tmp1(width, height);
+        jxl::Image3F tmp2(width, height);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            const float* srcp1 = reinterpret_cast<const float*>(src1->GetReadPtr(planes[i]));
+            const float* srcp2 = reinterpret_cast<const float*>(src2->GetReadPtr(planes[i]));
+
+            for (int y = 0; y < height; ++y)
+            {
+                memcpy(tmp1.PlaneRow(i, y), srcp1, width * sizeof(T));
+                memcpy(tmp2.PlaneRow(i, y), srcp2, width * sizeof(T));
+
+                srcp1 += stride1;
+                srcp2 += stride2;
+            }
+        }
+
+        ref.SetFromImage(std::move(tmp1), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+        dist.SetFromImage(std::move(tmp2), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
     }
 }
 
 class butteraugli_ : public GenericVideoFilter
 {
     PClip clip;
-    float hf_asymmetry_;
-    bool heatmap_, linput_;
+    jxl::CodecInOut ref;
+    jxl::CodecInOut dist;
+    jxl::ButteraugliParams ba_params;
 
-    void (*load_)(std::vector<butteraugli::ImageF>&, PVideoFrame&, int);
-    void (*hmap)(const butteraugli::ImageF&, PVideoFrame&, double, double, int);
+    template <bool distmap>
+    PVideoFrame result(PVideoFrame& dst, IScriptEnvironment* env);
+
+    void (*fill)(jxl::CodecInOut& ref, jxl::CodecInOut& dist, PVideoFrame& src1, PVideoFrame& src2);
+    void (*hmap)(PVideoFrame& dst, const jxl::ImageF& distmap);
+    PVideoFrame(butteraugli_::* dest)(PVideoFrame& dst, IScriptEnvironment* env);
 
 public:
-    butteraugli_(PClip _child, PClip _clip, float hf_asymmetry, bool heatmap, bool linput, IScriptEnvironment* env)
-        : GenericVideoFilter(_child), clip(_clip), hf_asymmetry_(hf_asymmetry), heatmap_(heatmap), linput_(linput)
-    {
-        if (!vi.IsPlanarRGB() && !vi.IsPlanarRGBA())
-            env->ThrowError("Butteraugli: the clip must be in RGB planar format.");
-
-        const VideoInfo vi1 = clip->GetVideoInfo();
-
-        if (vi.height != vi1.height || vi.width != vi1.width)
-            env->ThrowError("Butteraugli: the clips must have same dimensions.");
-        if (!vi.IsSameColorspace(vi1))
-            env->ThrowError("Butteraugli: the clips must be of the same color space.");
-        if (hf_asymmetry_ <= 0.0f)
-            env->ThrowError("Butteraugli: hf_asymmetry must be greater than 0.0");
-
-        switch (vi.ComponentSize())
-        {
-            case 1:
-                load_ = load<uint8_t>;
-                hmap = WriteResult<uint8_t>;
-                break;
-            case 2:
-                load_ = load<uint16_t>;
-                hmap = WriteResult<uint16_t>;
-                break;
-            default:
-                load_ = load<float>;
-                hmap = WriteResult<float>;
-                break;
-        }
-    }
-
-    int __stdcall SetCacheHints(int cachehints, int frame_range)
+    butteraugli_(PClip _child, PClip _clip, bool distmap, float intensity_target, bool linput, IScriptEnvironment* env);
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) override;
+    int __stdcall SetCacheHints(int cachehints, int frame_range) override
     {
         return cachehints == CACHE_GET_MTMODE ? MT_MULTI_INSTANCE : 0;
     }
-
-    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
-    {
-        PVideoFrame src1 = child->GetFrame(n, env);
-        PVideoFrame src2 = clip->GetFrame(n, env);
-        std::vector<butteraugli::ImageF> linear1, linear2;
-        const int peak = (1 << vi.BitsPerComponent()) - 1;
-
-        load_(linear1, src1, peak);
-        load_(linear2, src2, peak);
-
-        if (!linput_)
-        {
-            convert_to_linear(linear1);
-            convert_to_linear(linear2);
-        }
-
-        double diff_value;
-        butteraugli::ImageF diff_map;
-
-        if (!ButteraugliInterface(linear1, linear2, hf_asymmetry_, diff_map, diff_value))
-            env->ThrowError("butteraugli: fail to compare.");
-
-        PVideoFrame dst = env->NewVideoFrame(vi);
-
-        if (heatmap_)
-        {
-            hmap(diff_map, dst, butteraugli::ButteraugliFuzzyInverse(1.5), butteraugli::ButteraugliFuzzyInverse(0.5), peak);
-            env->copyFrameProps(src2, dst);
-        }
-        else
-            dst = src2;
-
-        env->propSetFloat(env->getFramePropsRW(dst), "_FrameButteraugli", diff_value, 0);
-
-        return dst;
-    }
 };
+
+template <bool distmap>
+PVideoFrame butteraugli_::result(PVideoFrame& src2, IScriptEnvironment* env)
+{
+    jxl::ImageF diff_map;
+
+    if constexpr (distmap)
+    {
+        PVideoFrame dst1 = env->NewVideoFrameP(vi, &src2);
+        double diff_value = jxl::ButteraugliDistance(ref.Main(), dist.Main(), ba_params, &diff_map, nullptr);
+        hmap(dst1, diff_map);
+        env->propSetFloat(env->getFramePropsRW(dst1), "_FrameButteraugli", diff_value, 0);
+
+        return dst1;
+    }
+    else
+    {
+        env->MakeWritable(&src2);
+        env->propSetFloat(env->getFramePropsRW(src2), "_FrameButteraugli", jxl::ButteraugliDistance(ref.Main(), dist.Main(), ba_params, &diff_map, nullptr), 0);
+
+        return src2;
+    }
+}
+
+butteraugli_::butteraugli_(PClip _child, PClip _clip, bool distmap, float intensity_target, bool linput, IScriptEnvironment* env)
+    : GenericVideoFilter(_child), clip(_clip)
+{
+    if (!vi.IsPlanarRGB() && !vi.IsPlanarRGBA())
+        env->ThrowError("Butteraugli: the clip must be in RGB planar format.");
+    
+    const int bits = vi.BitsPerComponent();
+
+    if (bits != 8 && bits != 16 && bits != 32)
+        env->ThrowError("Butteraugli: the clip must be have bit depth of 8/16/32.");
+
+    const VideoInfo vi1 = clip->GetVideoInfo();
+
+    if (vi.height != vi1.height || vi.width != vi1.width)
+        env->ThrowError("Butteraugli: the clips must have same dimensions.");
+    if (!vi.IsSameColorspace(vi1))
+        env->ThrowError("Butteraugli: the clips must be of the same color space.");
+    if (intensity_target <= 0.0f)
+        env->ThrowError("Butteraugli: intensity_target must be greater than 0.0");
+
+    switch (vi.ComponentSize())
+    {
+        case 1:
+            fill = (linput) ? fill_image<uint8_t, true> : fill_image<uint8_t, false>;
+            hmap = heatmap<uint8_t>;
+            break;
+        case 2:
+            fill = (linput) ? fill_image<uint16_t, true> : fill_image<uint16_t, false>;
+            hmap = heatmap<uint16_t>;
+            break;
+        default:
+            fill = (linput) ? fill_image<float, true> : fill_image<float, false>;
+            hmap = heatmap<float>;
+            break;
+    }
+
+    dest = (distmap) ? &butteraugli_::result<true> : &butteraugli_::result<false>;
+
+
+    ref.SetSize(vi.width, vi.height);
+    dist.SetSize(vi.width, vi.height);
+
+    if (linput)
+    {
+        ref.metadata.m.color_encoding = jxl::ColorEncoding::LinearSRGB(false);
+        dist.metadata.m.color_encoding = jxl::ColorEncoding::LinearSRGB(false);
+    }
+    else
+    {
+        ref.metadata.m.color_encoding = jxl::ColorEncoding::SRGB(false);
+        dist.metadata.m.color_encoding = jxl::ColorEncoding::SRGB(false);
+    }
+
+    ba_params.hf_asymmetry = 0.8f;
+    ba_params.xmul = 1.0f;
+    ba_params.intensity_target = intensity_target;
+}    
+
+PVideoFrame __stdcall butteraugli_::GetFrame(int n, IScriptEnvironment* env)
+{
+    PVideoFrame src1 = child->GetFrame(n, env);
+    PVideoFrame src2 = clip->GetFrame(n, env);
+
+    fill(ref, dist, src1, src2);
+
+    return (this->*dest)(src2, env);
+}
 
 AVSValue __cdecl Create_butteraugli_(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
     return new butteraugli_(
         args[0].AsClip(),
         args[1].AsClip(),
-        args[2].AsFloatf(1.0f),
-        args[3].AsBool(true),
+        args[2].AsBool(false),
+        args[3].AsFloatf(80.0f),
         args[4].AsBool(false),
         env);
 }
@@ -277,6 +275,6 @@ const char* __stdcall AvisynthPluginInit3(IScriptEnvironment * env, const AVS_Li
 {
     AVS_linkage = vectors;
 
-    env->AddFunction("Butteraugli", "cc[hf_asymmetry]f[heatmap]b[linput]b", Create_butteraugli_, 0);
+    env->AddFunction("Butteraugli", "cc[distmap]b[intensity_target]f[linput]b", Create_butteraugli_, 0);
     return "Butteraugli";
 }

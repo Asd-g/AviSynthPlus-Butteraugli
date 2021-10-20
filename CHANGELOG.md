@@ -1,3 +1,6 @@
+##### 2.0.0:
+    Updated to butteraugli library from libjxl.
+
 ##### 1.1.0:
     Added support for 10..32-bit clips.
     Added parameters 'hf_asymmetry' and 'linput'.

@@ -1,4 +1,3 @@
-[submodule "butteraugli"]
-	path = butteraugli
-	url = https://github.com/gralic/butteraugli
-	branch = master
+[submodule "libjxl"]
+	path = libjxl
+	url = https://github.com/libjxl/libjxl
