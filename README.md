@@ -15,19 +15,17 @@ This is [a port of the VapourSynth plugin butteraugli](https://github.com/fdar05
 ### Usage:
 
 ```
-Butteraugli (clip clip1, clip clip2, bool "distmap", float "intensity_target", bool "linput")
+Butteraugli (clip reference, clip distorted, bool "distmap", float "intensity_target", bool "linput")
 ```
 
 ### Parameters:
 
-- clip1, clip2\
+- reference, distorted\
     Clips that are used for estimating the psychovisual similarity.\
     They must be in RGB 8/16/32-bit planar format and must have same dimensions.
         
 - distmap\
-    Whether to return heatmap or clip2.\
-    True: heatmap.\
-    False: src2.\
+    Whether to return heatmap instead of distorted clip\
     Default: False.
     
 - intensity_target\
