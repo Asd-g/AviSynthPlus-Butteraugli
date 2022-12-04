@@ -1,8 +1,8 @@
 #include <winver.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION             2,0,0,0
-PRODUCTVERSION        	2,0,0,0
+FILEVERSION             2,0,1,0
+PRODUCTVERSION        	2,0,1,0
 FILEFLAGSMASK           VS_FFI_FILEFLAGSMASK
 FILEFLAGS               0x0L
 FILEOS                  VOS__WINDOWS32

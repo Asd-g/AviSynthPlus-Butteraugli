@@ -1,3 +1,6 @@
+##### 2.0.1:
+    Changed to be slightly more sensitive to low freq (DC) errors.
+
 ##### 2.0.0:
     Updated to butteraugli library from libjxl.
 
@@ -10,7 +13,6 @@
 
 ##### 1.0.1:
     Freed the dynamically allocated memory.
-    
+
 ##### 1.0.0:
     Initial release. Port of the VapourSynth plugin butteraugli r2.
-    
