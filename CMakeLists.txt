@@ -36,14 +36,14 @@ message(STATUS "Build type - ${CMAKE_BUILD_TYPE}")
 
 target_compile_features(butteraugli PRIVATE cxx_std_17)
 
-if (UNIX)    
+if (UNIX)
     target_compile_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:-ffunction-sections -s>)
 #else ()
 #    target_compile_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:/fp:precise /Gy /GS /Ot /Oi /Oy /GL>)
 endif ()
 
 if (NOT MSVC)
-    find_library(libjxl NAMES jxl PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)    
+    find_library(libjxl NAMES jxl PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)
 else ()
     find_library(libjxl NAMES jxl-static PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)
 endif ()
@@ -90,16 +90,16 @@ endif ()
 
 if (UNIX)
     include(GNUInstallDirs)
-    
+
     INSTALL(TARGETS butteraugli LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/avisynth")
-            
+
     # uninstall target
     if(NOT TARGET uninstall)
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
         IMMEDIATE @ONLY)
-    
+
     add_custom_target(uninstall
         COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
     endif ()
