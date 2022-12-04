@@ -21,6 +21,10 @@ target_include_directories(butteraugli PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/include
 )
 
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
+
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
 if (build_type STREQUAL debug)
     target_compile_definitions(butteraugli PRIVATE DEBUG_BUILD)
@@ -34,28 +38,28 @@ target_compile_features(butteraugli PRIVATE cxx_std_17)
 
 if (UNIX)    
     target_compile_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:-ffunction-sections -s>)
-else ()
-    target_compile_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:/fp:precise /Gy /GS /Ot /Oi /Oy /GL>)
+#else ()
+#    target_compile_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:/fp:precise /Gy /GS /Ot /Oi /Oy /GL>)
 endif ()
 
-find_library(libjxl NAMES jxl PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)
-find_library(libhwy NAMES hwy PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)
+if (NOT MSVC)
+    find_library(libjxl NAMES jxl PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)    
+else ()
+    find_library(libjxl NAMES jxl-static PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)
+endif ()
 message(STATUS "find_library returned ${libjxl}")
+
+find_library(libhwy NAMES hwy PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)
 message(STATUS "find_library returned ${libhwy}")
+
 target_link_libraries(butteraugli PRIVATE
     ${libjxl}
     ${libhwy}
 )
 
-if (MSVC)
-    find_library(libjxl-static NAMES jxl-static PATHS ${CMAKE_CURRENT_SOURCE_DIR}/libjxl/jxl_install/lib)
-    message(STATUS "find_library returned ${libjxl-static}")
-    target_link_libraries(butteraugli PRIVATE ${libjxl-static})
-endif ()
-
-if (MSVC)
-    target_link_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:/NOLOGO /OPT:REF /OPT:ICF /LTCG>)
-endif ()
+#if (MSVC)
+#    target_link_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:/NOLOGO /OPT:REF /OPT:ICF /LTCG>)
+#endif ()
 
 find_package (Git)
 
