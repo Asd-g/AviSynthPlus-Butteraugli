@@ -57,6 +57,13 @@ target_link_libraries(butteraugli PRIVATE
     ${libhwy}
 )
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+    target_link_libraries(butteraugli PRIVATE
+        libmmds
+        svml_disp
+    )
+endif ()
+
 #if (MSVC)
 #    target_link_options(butteraugli PRIVATE $<$<CONFIG:RELEASE>:/NOLOGO /OPT:REF /OPT:ICF /LTCG>)
 #endif ()
