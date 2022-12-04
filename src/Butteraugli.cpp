@@ -1,5 +1,6 @@
 #include "avisynth.h"
 #include "lib/jxl/enc_butteraugli_comparator.h"
+#include "lib/jxl/enc_color_management.h"
 
 template <typename T>
 void heatmap(PVideoFrame& dst, const jxl::ImageF& distmap)
@@ -174,7 +175,7 @@ PVideoFrame butteraugli_::result(PVideoFrame& src2, IScriptEnvironment* env)
     if constexpr (distmap)
     {
         PVideoFrame dst1 = env->NewVideoFrameP(vi, &src2);
-        double diff_value = jxl::ButteraugliDistance(ref.Main(), dist.Main(), ba_params, &diff_map, nullptr);
+        double diff_value = jxl::ButteraugliDistance(ref.Main(), dist.Main(), ba_params, jxl::GetJxlCms(), & diff_map, nullptr);
         hmap(dst1, diff_map);
         env->propSetFloat(env->getFramePropsRW(dst1), "_FrameButteraugli", diff_value, 0);
 
@@ -183,7 +184,7 @@ PVideoFrame butteraugli_::result(PVideoFrame& src2, IScriptEnvironment* env)
     else
     {
         env->MakeWritable(&src2);
-        env->propSetFloat(env->getFramePropsRW(src2), "_FrameButteraugli", jxl::ButteraugliDistance(ref.Main(), dist.Main(), ba_params, &diff_map, nullptr), 0);
+        env->propSetFloat(env->getFramePropsRW(src2), "_FrameButteraugli", jxl::ButteraugliDistance(ref.Main(), dist.Main(), ba_params, jxl::GetJxlCms(), &diff_map, nullptr), 0);
 
         return src2;
     }
