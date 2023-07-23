@@ -1,4 +1,5 @@
 #include "avisynth.h"
+#include "lib/extras/codec.h"
 #include "lib/jxl/enc_butteraugli_comparator.h"
 #include "lib/jxl/enc_color_management.h"
 
@@ -16,10 +17,10 @@ void heatmap(PVideoFrame& dst, const jxl::ImageF& distmap)
     if constexpr (std::is_same_v<T, uint8_t>)
     {
         jxl::Image3B tmp(width, height);
-        jxl::Image3Convert(buff, 255, &tmp);
 
         for (int i = 0; i < 3; ++i)
         {
+            jxl::ImageConvert(buff.Plane(i), 255, &tmp.Plane(i));
             uint8_t* dstp = dst->GetWritePtr(planes[i]);
 
             for (int y = 0; y < height; ++y)
@@ -32,11 +33,11 @@ void heatmap(PVideoFrame& dst, const jxl::ImageF& distmap)
     }
     else if constexpr (std::is_same_v<T, uint16_t>)
     {
-        jxl::Image3U tmp(width, height);
-        jxl::Image3Convert(buff, 65535, &tmp);
+        jxl::Image3U tmp(width, height); 
 
         for (int i = 0; i < 3; ++i)
         {
+            jxl::ImageConvert(buff.Plane(i), 65535, &tmp.Plane(i));
             uint16_t* dstp = reinterpret_cast<uint16_t*>(dst->GetWritePtr(planes[i]));
 
             for (int y = 0; y < height; ++y)
@@ -93,8 +94,8 @@ void fill_image(jxl::CodecInOut& ref, jxl::CodecInOut& dist, PVideoFrame& src1, 
             }
         }
 
-        ref.SetFromImage(std::move(jxl::ConvertToFloat(tmp1)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
-        dist.SetFromImage(std::move(jxl::ConvertToFloat(tmp2)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+        ref.SetFromImage(jxl::ConvertToFloat(tmp1), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+        dist.SetFromImage(jxl::ConvertToFloat(tmp2), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
     }
     else if constexpr (std::is_same_v<T, uint16_t>)
     {
@@ -116,8 +117,8 @@ void fill_image(jxl::CodecInOut& ref, jxl::CodecInOut& dist, PVideoFrame& src1, 
             }
         }
 
-        ref.SetFromImage(std::move(jxl::ConvertToFloat(tmp1)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
-        dist.SetFromImage(std::move(jxl::ConvertToFloat(tmp2)), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+        ref.SetFromImage(jxl::ConvertToFloat(tmp1), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
+        dist.SetFromImage(jxl::ConvertToFloat(tmp2), (linput) ? jxl::ColorEncoding::LinearSRGB(false) : jxl::ColorEncoding::SRGB(false));
     }
     else
     {
@@ -243,7 +244,7 @@ butteraugli_::butteraugli_(PClip _child, PClip _clip, bool distmap, float intens
         dist.metadata.m.color_encoding = jxl::ColorEncoding::SRGB(false);
     }
 
-    ba_params.hf_asymmetry = 0.8f;
+    ba_params.hf_asymmetry = 1.0f;
     ba_params.xmul = 1.0f;
     ba_params.intensity_target = intensity_target;
 }    
