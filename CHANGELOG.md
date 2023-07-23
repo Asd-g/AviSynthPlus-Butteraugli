@@ -1,3 +1,6 @@
+##### 2.0.2:
+    Changed hf_asymmetry from 0.8 to 1.0.
+
 ##### 2.0.1:
     Changed to be slightly more sensitive to low freq (DC) errors.
 
